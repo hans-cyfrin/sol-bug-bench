@@ -155,5 +155,118 @@ contract LiquidityPoolTest is Test {
         assertEq(pool.getShares(user1), 1 ether);
     }
 
+    function test_RevertWhen_ZeroDeposit() public {
+        vm.prank(user1);
+        vm.expectRevert("Invalid deposit");
+        pool.deposit{value: 0}();
+    }
+
+    function test_RevertWhen_ZeroDepositFor() public {
+        vm.prank(user1);
+        vm.expectRevert("Invalid deposit");
+        pool.depositFor{value: 0}(user2);
+    }
+
+    function test_RevertWhen_WithdrawMoreThanDeposited() public {
+        // Setup: deposit
+        vm.startPrank(user1);
+        pool.deposit{value: 1 ether}();
+
+        // Approve pool token transfer
+        pool.poolToken().approve(address(pool), 2 ether);
+
+        // Wait for withdrawal delay
+        skip(pool.WITHDRAWAL_DELAY());
+
+        // Try to withdraw more than deposited
+        vm.expectRevert("Insufficient deposit");
+        pool.withdraw(2 ether);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_WithdrawBeforeDelay() public {
+        // Setup: deposit
+        vm.startPrank(user1);
+        pool.deposit{value: 1 ether}();
+
+        // Approve pool token transfer
+        pool.poolToken().approve(address(pool), 1 ether);
+
+        // Try to withdraw before delay period
+        vm.expectRevert("Withdrawal delay not met");
+        pool.withdraw(1 ether);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_ClaimRewardWithInvalidSignature() public {
+        // Setup
+        vm.prank(user1);
+        pool.deposit{value: 1 ether}();
+
+        uint256 nonce = pool.nonces(user1);
+        bytes32 messageHash = keccak256(abi.encode(user1, 0.1 ether, nonce));
+        bytes32 invalidHash = keccak256(abi.encode(user2, 0.1 ether, nonce)); // Different user
+        bytes memory invalidSignature = abi.encode(invalidHash);
+
+        vm.prank(user1);
+        vm.expectRevert("Invalid signature");
+        pool.claimReward(0.1 ether, nonce, invalidSignature);
+    }
+
+    function test_RevertWhen_ClaimRewardWithInvalidNonce() public {
+        // Setup
+        vm.prank(user1);
+        pool.deposit{value: 1 ether}();
+
+        uint256 nonce = pool.nonces(user1);
+        uint256 invalidNonce = nonce + 1;
+        bytes32 messageHash = keccak256(abi.encode(user1, 0.1 ether, invalidNonce));
+        bytes memory signature = abi.encode(messageHash);
+
+        vm.prank(user1);
+        vm.expectRevert("Invalid nonce");
+        pool.claimReward(0.1 ether, invalidNonce, signature);
+    }
+
+    function test_RevertWhen_ClaimRewardWithInsufficientRewards() public {
+        // Setup
+        vm.prank(user1);
+        pool.deposit{value: 1 ether}();
+
+        uint256 nonce = pool.nonces(user1);
+        uint256 excessiveAmount = (1 ether * pool.REWARD_RATE()) / 100 + 1 ether; // More than available
+        bytes32 messageHash = keccak256(abi.encode(user1, excessiveAmount, nonce));
+        bytes memory signature = abi.encode(messageHash);
+
+        vm.prank(user1);
+        vm.expectRevert("Insufficient rewards");
+        pool.claimReward(excessiveAmount, nonce, signature);
+    }
+
+    function test_RevertWhen_SetInvalidLendingMarket() public {
+        vm.expectRevert("Invalid address");
+        pool.setLendingMarket(address(0));
+    }
+
+    function test_RevertWhen_SetInvalidStableCoin() public {
+        vm.expectRevert("Invalid address");
+        pool.setStableCoin(address(0));
+    }
+
+    function testCreateExistingMarket() public {
+        // Create market first time
+        vm.startPrank(user1);
+        LiquidityPool.MarketInfo memory info1 = pool.createMarket(1000);
+
+        // Create market second time with different price
+        LiquidityPool.MarketInfo memory info2 = pool.createMarket(2000);
+        vm.stopPrank();
+
+        // Should return the original market info, not create a new one
+        assertEq(info2.price, info1.price);
+        assertEq(info2.creator, user1);
+        assertTrue(info2.active);
+    }
+
     receive() external payable {}
 }
