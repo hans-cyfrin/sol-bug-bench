@@ -103,15 +103,7 @@ contract LendingMarketTest is Test {
         market.liquidate(user1);
 
         // Verify auction created
-        (
-            address borrower,
-            uint256 collateralAmount,
-            ,
-            ,
-            ,
-            ,
-            bool active
-        ) = market.auctions(0);
+        (address borrower, uint256 collateralAmount,,,,, bool active) = market.auctions(0);
         assertEq(borrower, user1);
         assertEq(collateralAmount, collateralRequired);
         assertTrue(active);
@@ -352,7 +344,7 @@ contract LendingMarketTest is Test {
         uint256 balanceBefore = user2.balance;
 
         // Get collateral amount from auction
-        (,uint256 collateralAmount,,,,,) = market.auctions(0);
+        (, uint256 collateralAmount,,,,,) = market.auctions(0);
 
         // Place bid with excess payment
         vm.prank(user2);

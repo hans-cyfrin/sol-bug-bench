@@ -25,7 +25,7 @@ contract GovernanceToken is ERC20, Ownable {
      * The initial supply is allocated to the deployer for distribution
      */
     constructor() ERC20("DeFiHub Governance", "DFHG") Ownable(msg.sender) {
-        _mint(msg.sender, 1000000 * 10**decimals());
+        _mint(msg.sender, 1000000 * 10 ** decimals());
     }
 
     /**
@@ -135,13 +135,8 @@ contract GroupStaking is Ownable {
 
         // Create the new group
         uint256 groupId = nextGroupId;
-        stakingGroups[groupId] = StakingGroup({
-            id: groupId,
-            totalAmount: 0,
-            members: _members,
-            weights: _weights,
-            exists: true
-        });
+        stakingGroups[groupId] =
+            StakingGroup({id: groupId, totalAmount: 0, members: _members, weights: _weights, exists: true});
 
         nextGroupId++;
         emit GroupCreated(groupId, _members, _weights);
@@ -203,21 +198,15 @@ contract GroupStaking is Ownable {
      * @return members Array of member addresses
      * @return weights Array of weights corresponding to each member
      */
-    function getGroupInfo(uint256 _groupId) external view returns (
-        uint256 id,
-        uint256 totalAmount,
-        address[] memory members,
-        uint256[] memory weights
-    ) {
+    function getGroupInfo(uint256 _groupId)
+        external
+        view
+        returns (uint256 id, uint256 totalAmount, address[] memory members, uint256[] memory weights)
+    {
         StakingGroup storage group = stakingGroups[_groupId];
         require(group.exists, "Group does not exist");
 
-        return (
-            group.id,
-            group.totalAmount,
-            group.members,
-            group.weights
-        );
+        return (group.id, group.totalAmount, group.members, group.weights);
     }
 
     /**

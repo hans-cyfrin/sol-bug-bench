@@ -21,13 +21,13 @@ contract StableCoinTest is Test {
         streamer = new TokenStreamer(stablecoin, 30 days);
 
         // Transfer some tokens to users for testing
-        stablecoin.transfer(user1, 1000 * 10**stablecoin.decimals());
-        stablecoin.transfer(user2, 1000 * 10**stablecoin.decimals());
+        stablecoin.transfer(user1, 1000 * 10 ** stablecoin.decimals());
+        stablecoin.transfer(user2, 1000 * 10 ** stablecoin.decimals());
     }
 
     function testInitialSupply() public {
-        assertEq(stablecoin.totalSupply(), 1000000 * 10**stablecoin.decimals());
-        assertEq(stablecoin.balanceOf(owner), 998000 * 10**stablecoin.decimals());
+        assertEq(stablecoin.totalSupply(), 1000000 * 10 ** stablecoin.decimals());
+        assertEq(stablecoin.balanceOf(owner), 998000 * 10 ** stablecoin.decimals());
     }
 
     function testDecimals() public {
@@ -35,13 +35,13 @@ contract StableCoinTest is Test {
     }
 
     function testMint() public {
-        uint256 mintAmount = 1000 * 10**stablecoin.decimals();
+        uint256 mintAmount = 1000 * 10 ** stablecoin.decimals();
         stablecoin.mint(user1, mintAmount);
-        assertEq(stablecoin.balanceOf(user1), 2000 * 10**stablecoin.decimals());
+        assertEq(stablecoin.balanceOf(user1), 2000 * 10 ** stablecoin.decimals());
     }
 
     function testTokenStreamerDeposit() public {
-        uint256 depositAmount = 100 * 10**stablecoin.decimals();
+        uint256 depositAmount = 100 * 10 ** stablecoin.decimals();
 
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
@@ -54,7 +54,7 @@ contract StableCoinTest is Test {
 
     function testTokenStreamerWithdraw() public {
         // Setup: deposit tokens and set stream rate
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);
@@ -78,7 +78,7 @@ contract StableCoinTest is Test {
 
     function testGetStreamRate() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);
@@ -91,7 +91,7 @@ contract StableCoinTest is Test {
 
     function testGetAvailableTokens() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);
@@ -109,7 +109,7 @@ contract StableCoinTest is Test {
 
     function testMaxStreamWithdrawal() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);
@@ -124,14 +124,11 @@ contract StableCoinTest is Test {
     }
 
     function test_RevertWhen_DepositTransferFails() public {
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         // Don't approve the transfer
         bytes memory err = abi.encodeWithSignature(
-            "ERC20InsufficientAllowance(address,uint256,uint256)",
-            address(streamer),
-            0,
-            depositAmount
+            "ERC20InsufficientAllowance(address,uint256,uint256)", address(streamer), 0, depositAmount
         );
         vm.expectRevert(err);
         streamer.depositToStream(depositAmount);
@@ -155,7 +152,7 @@ contract StableCoinTest is Test {
     }
 
     function test_RevertWhen_WithdrawTransferFails() public {
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);
@@ -164,11 +161,7 @@ contract StableCoinTest is Test {
         skip(15 days);
 
         // Mock the transfer to fail
-        vm.mockCall(
-            address(stablecoin),
-            abi.encodeWithSelector(stablecoin.transfer.selector),
-            abi.encode(false)
-        );
+        vm.mockCall(address(stablecoin), abi.encodeWithSelector(stablecoin.transfer.selector), abi.encode(false));
 
         vm.expectRevert("Transfer failed");
         streamer.withdrawFromStream();
@@ -183,8 +176,8 @@ contract StableCoinTest is Test {
     }
 
     function testMultipleDeposits() public {
-        uint256 firstDeposit = 100 * 10**stablecoin.decimals();
-        uint256 secondDeposit = 50 * 10**stablecoin.decimals();
+        uint256 firstDeposit = 100 * 10 ** stablecoin.decimals();
+        uint256 secondDeposit = 50 * 10 ** stablecoin.decimals();
 
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), firstDeposit + secondDeposit);
@@ -211,7 +204,7 @@ contract StableCoinTest is Test {
 
     function testWithdrawExactlyAtStreamDuration() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);
@@ -229,7 +222,7 @@ contract StableCoinTest is Test {
     }
 
     function testTokensMintedEvent() public {
-        uint256 mintAmount = 1000 * 10**stablecoin.decimals();
+        uint256 mintAmount = 1000 * 10 ** stablecoin.decimals();
 
         vm.expectEmit(true, false, false, true);
         emit StableCoin.TokensMinted(user1, mintAmount);
@@ -238,7 +231,7 @@ contract StableCoinTest is Test {
     }
 
     function testStreamDepositEvent() public {
-        uint256 depositAmount = 100 * 10**stablecoin.decimals();
+        uint256 depositAmount = 100 * 10 ** stablecoin.decimals();
 
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
@@ -252,7 +245,7 @@ contract StableCoinTest is Test {
 
     function testStreamWithdrawalEvent() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10**stablecoin.decimals();
+        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
         streamer.depositToStream(depositAmount);

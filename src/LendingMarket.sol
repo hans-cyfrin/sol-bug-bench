@@ -50,7 +50,7 @@ contract LendingMarket is Ownable {
         tokenStreamer = new TokenStreamer(stablecoin, STREAM_DURATION);
 
         // Mint initial governance tokens for protocol operations
-        govToken.mint(address(this), 500000 * 10**18);
+        govToken.mint(address(this), 500000 * 10 ** 18);
     }
 
     // Initialize a new staking group for governance participation
@@ -59,7 +59,7 @@ contract LendingMarket is Ownable {
         GroupStaking staking = new GroupStaking(address(govToken));
 
         // Transfer governance tokens to the staking contract
-        govToken.transfer(address(staking), 50000 * 10**18);
+        govToken.transfer(address(staking), 50000 * 10 ** 18);
 
         // Create the staking group
         return staking.createStakingGroup(members, weights);

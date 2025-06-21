@@ -21,7 +21,7 @@ contract StableCoin is ERC20 {
      * The initial supply is allocated to the deployer for distribution
      */
     constructor() ERC20("USD Stable", "USDS") {
-        _mint(msg.sender, 1000000 * 10**decimals());
+        _mint(msg.sender, 1000000 * 10 ** decimals());
     }
 
     /**

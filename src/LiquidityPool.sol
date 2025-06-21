@@ -58,9 +58,8 @@ contract LiquidityPool is Ownable {
             // Notify lending market about the new price oracle if integrated
             if (lendingMarket != address(0)) {
                 // This is a simplified integration - in production, would use an interface
-                (bool success,) = lendingMarket.call(
-                    abi.encodeWithSignature("updateMarketPrice(address,uint256)", msg.sender, price)
-                );
+                (bool success,) =
+                    lendingMarket.call(abi.encodeWithSignature("updateMarketPrice(address,uint256)", msg.sender, price));
                 // We don't revert if this fails to maintain protocol robustness
             }
         }

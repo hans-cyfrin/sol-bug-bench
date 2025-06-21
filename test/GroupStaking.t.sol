@@ -23,9 +23,9 @@ contract GroupStakingTest is Test {
         staking = new GroupStaking(address(token));
 
         // Give tokens to members for testing
-        token.transfer(member1, 1000 * 10**18);
-        token.transfer(member2, 1000 * 10**18);
-        token.transfer(member3, 1000 * 10**18);
+        token.transfer(member1, 1000 * 10 ** 18);
+        token.transfer(member2, 1000 * 10 ** 18);
+        token.transfer(member3, 1000 * 10 ** 18);
     }
 
     function testCreateStakingGroup() public {
@@ -42,7 +42,8 @@ contract GroupStakingTest is Test {
         uint256 groupId = staking.createStakingGroup(members, weights);
         assertEq(groupId, 1);
 
-        (uint256 id, uint256 totalAmount, address[] memory groupMembers, uint256[] memory groupWeights) = staking.getGroupInfo(groupId);
+        (uint256 id, uint256 totalAmount, address[] memory groupMembers, uint256[] memory groupWeights) =
+            staking.getGroupInfo(groupId);
 
         assertEq(id, groupId);
         assertEq(totalAmount, 0);
@@ -65,7 +66,7 @@ contract GroupStakingTest is Test {
         uint256 groupId = staking.createStakingGroup(members, weights);
 
         // Approve and stake tokens
-        uint256 stakeAmount = 100 * 10**18;
+        uint256 stakeAmount = 100 * 10 ** 18;
         vm.startPrank(member1);
         token.approve(address(staking), stakeAmount);
         staking.stakeToGroup(groupId, stakeAmount);
@@ -88,7 +89,7 @@ contract GroupStakingTest is Test {
 
         uint256 groupId = staking.createStakingGroup(members, weights);
 
-        uint256 stakeAmount = 100 * 10**18;
+        uint256 stakeAmount = 100 * 10 ** 18;
         vm.startPrank(member1);
         token.approve(address(staking), stakeAmount);
         staking.stakeToGroup(groupId, stakeAmount);
@@ -99,7 +100,7 @@ contract GroupStakingTest is Test {
         uint256 member2BalanceBefore = token.balanceOf(member2);
 
         // Withdraw half the staked amount
-        uint256 withdrawAmount = 50 * 10**18;
+        uint256 withdrawAmount = 50 * 10 ** 18;
         vm.prank(member1);
         staking.withdrawFromGroup(groupId, withdrawAmount);
 
@@ -163,7 +164,7 @@ contract GroupStakingTest is Test {
 
     function testNonExistentGroupStake() public {
         uint256 nonExistentGroupId = 999;
-        uint256 stakeAmount = 100 * 10**18;
+        uint256 stakeAmount = 100 * 10 ** 18;
 
         vm.startPrank(member1);
         token.approve(address(staking), stakeAmount);
@@ -184,14 +185,14 @@ contract GroupStakingTest is Test {
 
         uint256 groupId = staking.createStakingGroup(members, weights);
 
-        uint256 stakeAmount = 100 * 10**18;
+        uint256 stakeAmount = 100 * 10 ** 18;
         vm.startPrank(member1);
         token.approve(address(staking), stakeAmount);
         staking.stakeToGroup(groupId, stakeAmount);
         vm.stopPrank();
 
         // Try to withdraw more than staked
-        uint256 withdrawAmount = 200 * 10**18;
+        uint256 withdrawAmount = 200 * 10 ** 18;
         vm.prank(member1);
         vm.expectRevert("Insufficient group balance");
         staking.withdrawFromGroup(groupId, withdrawAmount);
@@ -215,7 +216,7 @@ contract GroupStakingTest is Test {
 
         uint256 groupId = staking.createStakingGroup(members, weights);
 
-        uint256 stakeAmount = 100 * 10**18;
+        uint256 stakeAmount = 100 * 10 ** 18;
         vm.startPrank(member1);
         token.approve(address(staking), stakeAmount);
         staking.stakeToGroup(groupId, stakeAmount);
@@ -224,6 +225,6 @@ contract GroupStakingTest is Test {
         // Try to withdraw as non-member
         vm.prank(member3);
         vm.expectRevert("Not a group member");
-        staking.withdrawFromGroup(groupId, 50 * 10**18);
+        staking.withdrawFromGroup(groupId, 50 * 10 ** 18);
     }
 }
