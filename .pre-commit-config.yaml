@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: forge-fmt
+        name: Run forge fmt
+        entry: forge fmt --run-all
+        language: system
+        types: [solidity]
+        files: '\.sol$'
