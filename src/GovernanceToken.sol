@@ -57,7 +57,11 @@ contract GovernanceToken is ERC20, Ownable {
      * @param amount The amount of tokens to transfer
      * @return A boolean indicating whether the transfer was successful
      */
-    function transfer(address recipient, uint256 amount) public override returns (bool) {
+    function transfer(address recipient, uint256 amount)
+        public
+        override
+        returns (bool)
+    {
         require(!blacklisted[msg.sender], "Sender is blacklisted");
         require(!blacklisted[recipient], "Recipient is blacklisted");
         return super.transfer(recipient, amount);
@@ -71,7 +75,11 @@ contract GovernanceToken is ERC20, Ownable {
      * @param amount The amount of tokens to transfer
      * @return A boolean indicating whether the transfer was successful
      */
-    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+    function transferFrom(address sender, address recipient, uint256 amount)
+        public
+        override
+        returns (bool)
+    {
         require(!blacklisted[sender], "Sender is blacklisted");
         require(!blacklisted[recipient], "Recipient is blacklisted");
         return super.transferFrom(sender, recipient, amount);
@@ -122,9 +130,14 @@ contract GroupStaking is Ownable {
      * @param _weights Array of weights corresponding to each member (must sum to 100)
      * @return The ID of the newly created group
      */
-    function createStakingGroup(address[] calldata _members, uint256[] calldata _weights) external returns (uint256) {
+    function createStakingGroup(
+        address[] calldata _members,
+        uint256[] calldata _weights
+    ) external returns (uint256) {
         require(_members.length > 0, "Empty members list");
-        require(_members.length == _weights.length, "Members and weights length mismatch");
+        require(
+            _members.length == _weights.length, "Members and weights length mismatch"
+        );
 
         // Validate that weights sum to 100%
         uint256 totalWeight = 0;
@@ -135,8 +148,13 @@ contract GroupStaking is Ownable {
 
         // Create the new group
         uint256 groupId = nextGroupId;
-        stakingGroups[groupId] =
-            StakingGroup({id: groupId, totalAmount: 0, members: _members, weights: _weights, exists: true});
+        stakingGroups[groupId] = StakingGroup({
+            id: groupId,
+            totalAmount: 0,
+            members: _members,
+            weights: _weights,
+            exists: true
+        });
 
         nextGroupId++;
         emit GroupCreated(groupId, _members, _weights);
@@ -150,7 +168,9 @@ contract GroupStaking is Ownable {
      */
     function stakeToGroup(uint256 _groupId, uint256 _amount) external {
         require(stakingGroups[_groupId].exists, "Group does not exist");
-        require(token.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
+        require(
+            token.transferFrom(msg.sender, address(this), _amount), "Transfer failed"
+        );
 
         stakingGroups[_groupId].totalAmount += _amount;
         emit StakeAdded(_groupId, msg.sender, _amount);
@@ -201,7 +221,12 @@ contract GroupStaking is Ownable {
     function getGroupInfo(uint256 _groupId)
         external
         view
-        returns (uint256 id, uint256 totalAmount, address[] memory members, uint256[] memory weights)
+        returns (
+            uint256 id,
+            uint256 totalAmount,
+            address[] memory members,
+            uint256[] memory weights
+        )
     {
         StakingGroup storage group = stakingGroups[_groupId];
         require(group.exists, "Group does not exist");
@@ -215,7 +240,11 @@ contract GroupStaking is Ownable {
      * @param _member The address to check membership for
      * @return A boolean indicating whether the address is a member
      */
-    function isMemberOfGroup(uint256 _groupId, address _member) external view returns (bool) {
+    function isMemberOfGroup(uint256 _groupId, address _member)
+        external
+        view
+        returns (bool)
+    {
         StakingGroup storage group = stakingGroups[_groupId];
         if (!group.exists) return false;
 

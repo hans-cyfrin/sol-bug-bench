@@ -82,7 +82,9 @@ contract TokenStreamer {
      * @param amount The amount of tokens to deposit
      */
     function depositToStream(uint256 amount) external {
-        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        require(
+            token.transferFrom(msg.sender, address(this), amount), "Transfer failed"
+        );
         streamBalances[msg.sender] += amount;
         lastStreamUpdate[msg.sender] = block.timestamp;
 

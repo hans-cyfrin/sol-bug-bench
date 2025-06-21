@@ -75,18 +75,24 @@ contract GovernanceTokenTest is Test {
     }
 
     function testTransferToZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSignature("ERC20InvalidReceiver(address)", address(0)));
+        vm.expectRevert(
+            abi.encodeWithSignature("ERC20InvalidReceiver(address)", address(0))
+        );
         token.transfer(address(0), 100 * 10 ** 18);
     }
 
     function testApproveToZeroAddress() public {
-        vm.expectRevert(abi.encodeWithSignature("ERC20InvalidSpender(address)", address(0)));
+        vm.expectRevert(
+            abi.encodeWithSignature("ERC20InvalidSpender(address)", address(0))
+        );
         token.approve(address(0), 100 * 10 ** 18);
     }
 
     function testTransferFromZeroAddress() public {
         vm.prank(address(0));
-        vm.expectRevert(abi.encodeWithSignature("ERC20InvalidSender(address)", address(0)));
+        vm.expectRevert(
+            abi.encodeWithSignature("ERC20InvalidSender(address)", address(0))
+        );
         token.transfer(address(1), 100 * 10 ** 18);
     }
 
@@ -95,7 +101,9 @@ contract GovernanceTokenTest is Test {
         token.approve(user2, 1000 * 10 ** 18);
 
         vm.prank(user2);
-        vm.expectRevert(abi.encodeWithSignature("ERC20InvalidReceiver(address)", address(0)));
+        vm.expectRevert(
+            abi.encodeWithSignature("ERC20InvalidReceiver(address)", address(0))
+        );
         token.transferFrom(user1, address(0), 100 * 10 ** 18);
     }
 
@@ -103,7 +111,10 @@ contract GovernanceTokenTest is Test {
         vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSignature(
-                "ERC20InsufficientBalance(address,uint256,uint256)", user1, 1000 * 10 ** 18, 2000 * 10 ** 18
+                "ERC20InsufficientBalance(address,uint256,uint256)",
+                user1,
+                1000 * 10 ** 18,
+                2000 * 10 ** 18
             )
         );
         token.transfer(user2, 2000 * 10 ** 18);
@@ -116,7 +127,10 @@ contract GovernanceTokenTest is Test {
         vm.prank(user2);
         vm.expectRevert(
             abi.encodeWithSignature(
-                "ERC20InsufficientBalance(address,uint256,uint256)", user1, 1000 * 10 ** 18, 2000 * 10 ** 18
+                "ERC20InsufficientBalance(address,uint256,uint256)",
+                user1,
+                1000 * 10 ** 18,
+                2000 * 10 ** 18
             )
         );
         token.transferFrom(user1, address(0x3), 2000 * 10 ** 18);
@@ -129,7 +143,10 @@ contract GovernanceTokenTest is Test {
         vm.prank(user2);
         vm.expectRevert(
             abi.encodeWithSignature(
-                "ERC20InsufficientAllowance(address,uint256,uint256)", user2, 50 * 10 ** 18, 100 * 10 ** 18
+                "ERC20InsufficientAllowance(address,uint256,uint256)",
+                user2,
+                50 * 10 ** 18,
+                100 * 10 ** 18
             )
         );
         token.transferFrom(user1, address(0x3), 100 * 10 ** 18);

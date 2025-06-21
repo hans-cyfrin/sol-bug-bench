@@ -58,8 +58,11 @@ contract LiquidityPool is Ownable {
             // Notify lending market about the new price oracle if integrated
             if (lendingMarket != address(0)) {
                 // This is a simplified integration - in production, would use an interface
-                (bool success,) =
-                    lendingMarket.call(abi.encodeWithSignature("updateMarketPrice(address,uint256)", msg.sender, price));
+                (bool success,) = lendingMarket.call(
+                    abi.encodeWithSignature(
+                        "updateMarketPrice(address,uint256)", msg.sender, price
+                    )
+                );
                 // We don't revert if this fails to maintain protocol robustness
             }
         }
@@ -142,7 +145,10 @@ contract LiquidityPool is Ownable {
         require(poolToken.balanceOf(msg.sender) >= amount, "Insufficient shares");
 
         // Enforce withdrawal delay for security
-        require(block.timestamp >= lastDepositTime[msg.sender] + WITHDRAWAL_DELAY, "Withdrawal delay not met");
+        require(
+            block.timestamp >= lastDepositTime[msg.sender] + WITHDRAWAL_DELAY,
+            "Withdrawal delay not met"
+        );
 
         (bool success,) = msg.sender.call{value: amount}("");
         require(success, "Transfer failed");
@@ -153,7 +159,9 @@ contract LiquidityPool is Ownable {
     }
 
     // Claim rewards using a signature-based verification system
-    function claimReward(uint256 amount, uint256 nonce, bytes memory signature) external {
+    function claimReward(uint256 amount, uint256 nonce, bytes memory signature)
+        external
+    {
         require(rewards[msg.sender] >= amount, "Insufficient rewards");
         require(nonces[msg.sender] == nonce, "Invalid nonce");
 

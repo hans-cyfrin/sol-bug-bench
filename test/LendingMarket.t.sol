@@ -40,7 +40,12 @@ contract LendingMarketTest is Test {
         vm.prank(user1);
         market.initializePosition(1000); // Price of 1000
 
-        (uint256 collateral, uint256 borrowed, uint256 lastInterest, uint256 marketPrice) = market.positions(user1);
+        (
+            uint256 collateral,
+            uint256 borrowed,
+            uint256 lastInterest,
+            uint256 marketPrice
+        ) = market.positions(user1);
         assertEq(collateral, 0);
         assertEq(borrowed, 0);
         assertEq(lastInterest, 0);
@@ -103,7 +108,8 @@ contract LendingMarketTest is Test {
         market.liquidate(user1);
 
         // Verify auction created
-        (address borrower, uint256 collateralAmount,,,,, bool active) = market.auctions(0);
+        (address borrower, uint256 collateralAmount,,,,, bool active) =
+            market.auctions(0);
         assertEq(borrower, user1);
         assertEq(collateralAmount, collateralRequired);
         assertTrue(active);
@@ -298,7 +304,8 @@ contract LendingMarketTest is Test {
         uint256 endPrice = market.getCurrentAuctionPrice(0);
 
         // Verify it's the end price
-        (,, uint256 startPrice, uint256 expectedEndPrice,,, bool active) = market.auctions(0);
+        (,, uint256 startPrice, uint256 expectedEndPrice,,, bool active) =
+            market.auctions(0);
         assertTrue(active);
         assertLt(endPrice, startPrice);
         assertEq(endPrice, expectedEndPrice);

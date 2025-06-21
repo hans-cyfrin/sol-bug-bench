@@ -128,7 +128,10 @@ contract StableCoinTest is Test {
         vm.startPrank(user1);
         // Don't approve the transfer
         bytes memory err = abi.encodeWithSignature(
-            "ERC20InsufficientAllowance(address,uint256,uint256)", address(streamer), 0, depositAmount
+            "ERC20InsufficientAllowance(address,uint256,uint256)",
+            address(streamer),
+            0,
+            depositAmount
         );
         vm.expectRevert(err);
         streamer.depositToStream(depositAmount);
@@ -161,7 +164,11 @@ contract StableCoinTest is Test {
         skip(15 days);
 
         // Mock the transfer to fail
-        vm.mockCall(address(stablecoin), abi.encodeWithSelector(stablecoin.transfer.selector), abi.encode(false));
+        vm.mockCall(
+            address(stablecoin),
+            abi.encodeWithSelector(stablecoin.transfer.selector),
+            abi.encode(false)
+        );
 
         vm.expectRevert("Transfer failed");
         streamer.withdrawFromStream();

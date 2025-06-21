@@ -54,7 +54,10 @@ contract LendingMarket is Ownable {
     }
 
     // Initialize a new staking group for governance participation
-    function createStakingGroup(address[] calldata members, uint256[] calldata weights) external returns (uint256) {
+    function createStakingGroup(address[] calldata members, uint256[] calldata weights)
+        external
+        returns (uint256)
+    {
         // Create a new GroupStaking contract for governance token holders
         GroupStaking staking = new GroupStaking(address(govToken));
 
@@ -96,12 +99,16 @@ contract LendingMarket is Ownable {
         require(position.borrowedAmount > 0, "No active loan");
 
         uint256 blocksPassed = block.number - position.lastInterestBlock;
-        uint256 interest = (position.borrowedAmount * INTEREST_RATE * blocksPassed) / (100 * 100);
+        uint256 interest =
+            (position.borrowedAmount * INTEREST_RATE * blocksPassed) / (100 * 100);
         uint256 totalDue = position.borrowedAmount + interest;
 
         require(repayAmount <= totalDue, "Invalid repay amount");
 
-        require(stablecoin.transferFrom(msg.sender, address(this), repayAmount), "Transfer failed");
+        require(
+            stablecoin.transferFrom(msg.sender, address(this), repayAmount),
+            "Transfer failed"
+        );
 
         position.borrowedAmount = totalDue - repayAmount;
         position.lastInterestBlock = block.number;
@@ -120,7 +127,8 @@ contract LendingMarket is Ownable {
         require(position.borrowedAmount > 0, "No active loan");
 
         uint256 blocksPassed = block.number - position.lastInterestBlock;
-        uint256 interest = (position.borrowedAmount * INTEREST_RATE * blocksPassed) / (100 * 100);
+        uint256 interest =
+            (position.borrowedAmount * INTEREST_RATE * blocksPassed) / (100 * 100);
         uint256 totalDue = position.borrowedAmount + interest;
 
         uint256 requiredCollateral = (totalDue * COLLATERAL_RATIO) / 100;
@@ -209,7 +217,11 @@ contract LendingMarket is Ownable {
         return positions[user];
     }
 
-    function getRequiredCollateral(uint256 borrowAmount) public pure returns (uint256) {
+    function getRequiredCollateral(uint256 borrowAmount)
+        public
+        pure
+        returns (uint256)
+    {
         return (borrowAmount * COLLATERAL_RATIO) / 100;
     }
 

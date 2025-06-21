@@ -42,8 +42,12 @@ contract GroupStakingTest is Test {
         uint256 groupId = staking.createStakingGroup(members, weights);
         assertEq(groupId, 1);
 
-        (uint256 id, uint256 totalAmount, address[] memory groupMembers, uint256[] memory groupWeights) =
-            staking.getGroupInfo(groupId);
+        (
+            uint256 id,
+            uint256 totalAmount,
+            address[] memory groupMembers,
+            uint256[] memory groupWeights
+        ) = staking.getGroupInfo(groupId);
 
         assertEq(id, groupId);
         assertEq(totalAmount, 0);
@@ -105,8 +109,12 @@ contract GroupStakingTest is Test {
         staking.withdrawFromGroup(groupId, withdrawAmount);
 
         // Check balances after withdrawal
-        assertEq(token.balanceOf(member1), member1BalanceBefore + (withdrawAmount * 60 / 100));
-        assertEq(token.balanceOf(member2), member2BalanceBefore + (withdrawAmount * 40 / 100));
+        assertEq(
+            token.balanceOf(member1), member1BalanceBefore + (withdrawAmount * 60 / 100)
+        );
+        assertEq(
+            token.balanceOf(member2), member2BalanceBefore + (withdrawAmount * 40 / 100)
+        );
 
         // Check remaining group balance
         (, uint256 totalAmount,,) = staking.getGroupInfo(groupId);
