@@ -1,167 +1,76 @@
-# DeFiHub: Decentralized Finance Protocol
+# Solidity Bug Bench
 
-DeFiHub is a comprehensive decentralized finance protocol that combines lending, liquidity provision, governance, and token streaming into a unified ecosystem. The protocol is designed to provide a complete suite of financial services while maintaining high capital efficiency and user experience.
+## Purpose
+This repository contains a collection of intentionally vulnerable Solidity smart contracts designed for educational and testing purposes. It serves as a resource for developers, security researchers, and students to learn about common vulnerabilities in smart contracts and how to mitigate them.
 
-## Protocol Architecture
+## Bug Categories and Locations
 
-### Core Components
+### 1. Denial of Service (DoS) Attacks
 
-#### 1. LendingMarket
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-DOSA-1 | ✓ | LiquidityPool.sol | `claimReward` - Transfers fees to owner before user payment |
+| SOL-AM-DOSA-2 | ✓ | LendingMarket.sol | `liquidate` - No check if ETH transfer might fail |
+| SOL-AM-DOSA-3 | ✓ | GovernanceToken.sol | `withdrawFromGroup` - Blacklisted member blocks all distributions |
+| SOL-AM-DOSA-4 | ✓ | LiquidityPool.sol | `processWithdrawals` - Single failure blocks entire queue |
+| SOL-AM-DOSA-5 | ✓ | StableCoin.sol | `TokenStreamer` - Integer division with low decimals |
 
-The LendingMarket serves as the central lending platform of the protocol, enabling users to borrow against their collateral and participate in liquidation auctions.
+### 2. Reentrancy Attacks
 
-**Key Features:**
-- Over-collateralized lending with a 150% collateral ratio
-- Dynamic interest rate model based on block-by-block calculations
-- Dutch auction liquidation mechanism for capital efficiency
-- Governance token rewards for borrowers and liquidators
-- Integration with the protocol's stablecoin for loan issuance
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-ReentrancyAttack-1 | ✓ | LendingMarket.sol | `repay` - ETH transfer before state update |
+| SOL-AM-ReentrancyAttack-2 | ✓ | LiquidityPool.sol | `withdraw` - Token transfer before state update |
 
-**Technical Specifications:**
-- Interest Rate: 5% (annualized, calculated per block)
-- Liquidation Threshold: When collateral value falls below 150% of loan value
-- Liquidation Bonus: 5% premium for liquidators
-- Auction Duration: 1 hour with linear price decay
+### 3. Front-running Attacks
 
-#### 2. LiquidityPool
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-FrA-1 | ✓ | LiquidityPool.sol | `createMarket` - Manipulable market creation |
+| SOL-AM-FrA-2 | ✓ | LendingMarket.sol | `initializePosition` - Manipulable position initialization |
+| SOL-AM-FrA-3 | ✓ | LendingMarket.sol | `bidOnAuction` - Auction bid front-running |
+| SOL-AM-FrA-4 | ✓ | LiquidityPool.sol | `claimReward` - Reward claim front-running |
 
-The LiquidityPool enables users to provide ETH liquidity to the protocol and earn rewards proportional to their contribution.
+### 4. Replay Attacks
 
-**Key Features:**
-- Share-based liquidity provision model
-- Time-locked withdrawals for protocol stability
-- Signature-based reward claiming system
-- Proxy deposit functionality for institutional users
-- Queue-based withdrawal system for large redemptions
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-ReplayAttack-1 | ✓ | LiquidityPool.sol | `claimReward` - Nonce only incremented on success |
+| SOL-AM-ReplayAttack-2 | ✓ | LiquidityPool.sol | `claimReward` - No contract-specific data in signature |
 
-**Technical Specifications:**
-- Reward Rate: 10% of deposit value
-- Withdrawal Delay: 1 day time lock
-- Fee Structure: 10% of rewards allocated to protocol treasury
+### 5. Griefing Attacks
 
-#### 3. StableCoin & TokenStreamer
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-GA-1 | ✓ | LiquidityPool.sol | `depositFor` - Anyone can reset withdrawal timer |
+| SOL-AM-GA-2 | ✓ | GovernanceToken.sol | `withdrawFromGroup` - Blacklisted member blocks distributions |
 
-The protocol's native stablecoin provides a stable medium of exchange, while the TokenStreamer enables gradual token distribution.
+### 6. Price Manipulation Attacks
 
-**Key Features:**
-- ERC20-compliant stablecoin with simplified decimal structure
-- Continuous token streaming with time-based distribution
-- Deposit and withdrawal mechanisms for streaming balances
-- Integration with lending and liquidity components
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-PMA-1 | ✓ | LendingMarket.sol | `borrow` - Relies on user-provided price |
+| SOL-AM-PMA-1_0 | ✓ | LendingMarket.sol | `getCurrentAuctionPrice` - Manipulable price calculation |
+| SOL-AM-PMA-2_1 | ✓ | LendingMarket.sol | `liquidate` - No oracle verification for liquidations |
 
-**Technical Specifications:**
-- Decimal Places: 1 (optimized for gas efficiency)
-- Stream Duration: Configurable, default 30 days
-- Distribution Model: Linear time-based release
+### 7. Donation Attacks
 
-#### 4. GovernanceToken & GroupStaking
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-DA-1 | ✓ | LiquidityPool.sol | `deposit` - Share calculation vulnerable to donations |
 
-The governance system allows token holders to participate in protocol decision-making and stake collectively.
+### 8. Timestamp Manipulation
 
-**Key Features:**
-- Decentralized governance through token voting
-- Group staking for collective reward earning
-- Weight-based reward distribution within groups
-- User status management for protocol security
+| Check Item | Bug Location | Contract | Function |
+|------------|--------------|----------|----------|
+| SOL-AM-MA-1 | ✓ | LendingMarket.sol | `bidOnAuction` - Relies on block.timestamp |
+| SOL-AM-MA-2 | ✓ | LiquidityPool.sol | `withdraw` - Withdrawal delay uses block.timestamp |
+| SOL-AM-MA-3 | ✓ | StableCoin.sol | `withdrawFromStream` - Streaming calculation uses block.timestamp |
 
-**Technical Specifications:**
-- Staking Group Size: Unlimited members
-- Weight Distribution: Customizable, must sum to 100%
-- Governance Rewards: Distributed based on protocol activity
+### 9. Additional Bugs
 
-## Integration Flow
-
-The DeFiHub protocol components are tightly integrated to create a seamless user experience:
-
-1. **Liquidity Provision**: Users deposit ETH into the LiquidityPool and receive PoolShare tokens representing their share of the pool.
-
-2. **Lending & Borrowing**: The LendingMarket draws liquidity from the pool to facilitate loans. Users can borrow StableCoins by providing ETH as collateral.
-
-3. **Governance Participation**: Borrowers and liquidity providers earn GovernanceTokens, which they can use to participate in protocol governance.
-
-4. **Reward Distribution**: The TokenStreamer provides a mechanism for gradual reward distribution to protocol participants.
-
-5. **Collective Staking**: Users can form staking groups to collectively earn rewards and reduce individual gas costs.
-
-## Technical Implementation
-
-### Smart Contract Architecture
-
-The protocol is implemented as a set of interconnected smart contracts:
-
-```
-DeFiHub Protocol
-├── LendingMarket.sol
-│   ├── Position Management
-│   ├── Interest Calculation
-│   ├── Liquidation Auctions
-│   └── Governance Integration
-├── LiquidityPool.sol
-│   ├── PoolShare Token
-│   ├── Deposit/Withdrawal Logic
-│   ├── Reward Distribution
-│   └── Market Price Oracles
-├── StableCoin.sol
-│   ├── ERC20 Implementation
-│   └── TokenStreamer
-└── GovernanceToken.sol
-    ├── ERC20 Implementation
-    ├── User Status Management
-    └── GroupStaking
-```
-
-### Security Considerations
-
-The protocol implements several security measures:
-
-- Time-delayed withdrawals to prevent flash loan attacks
-- Signature-based verification for reward claims
-- Nonce-based protection against replay attacks
-- Over-collateralization to protect against market volatility
-- Dutch auction mechanism for fair liquidation pricing
-
-## User Guide
-
-### For Liquidity Providers
-
-1. Deposit ETH into the LiquidityPool using the `deposit()` function
-2. Receive PoolShare tokens representing your share of the pool
-3. Earn rewards based on your contribution
-4. Claim rewards using the signature-based system
-5. Withdraw your liquidity after the time lock period
-
-### For Borrowers
-
-1. Initialize a position with a market price using `initializePosition()`
-2. Deposit collateral and borrow StableCoins using `borrow()`
-3. Maintain a healthy collateral ratio to avoid liquidation
-4. Repay your loan with interest using `repay()`
-5. Receive your collateral back upon full repayment
-
-### For Governance Participants
-
-1. Acquire GovernanceTokens through protocol participation
-2. Join or create staking groups using `createStakingGroup()`
-3. Stake tokens to earn additional rewards
-4. Participate in protocol governance decisions
-
-### For Liquidators
-
-1. Monitor positions for under-collateralization
-2. Initiate liquidation using `liquidate()`
-3. Participate in Dutch auctions using `bidOnAuction()`
-4. Receive collateral at a discount and governance token rewards
-
-## Future Development
-
-The DeFiHub protocol roadmap includes:
-
-1. **Multi-collateral Support**: Expanding beyond ETH to support multiple collateral types
-2. **Yield Optimization**: Integrating with external protocols to maximize returns for liquidity providers
-3. **Advanced Governance**: Implementing proposal and voting mechanisms
-4. **Cross-chain Integration**: Expanding to multiple blockchain networks
-5. **Risk Management Tools**: Developing insurance and hedging mechanisms
-
----
-
-*DeFiHub is an experimental protocol for educational and demonstration purposes. Always conduct thorough research and risk assessment before interacting with DeFi protocols.*
+| Bug Type | Bug Location | Contract | Function |
+|----------|--------------|----------|----------|
+| Access Control | ✓ | StableCoin.sol | `mint` - No access control |
+| Return Value | ✓ | LendingMarket.sol | `borrow` - Unchecked mint return value |
+| Input Validation | ✓ | LendingMarket.sol | `initializePosition` - No price validation |
