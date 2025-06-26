@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: forge-fmt
         name: Run forge fmt
-        entry: forge fmt --run-all
+        entry: forge fmt
         language: system
         types: [solidity]
         files: '\.sol$'
