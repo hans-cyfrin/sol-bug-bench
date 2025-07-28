@@ -20,14 +20,18 @@ contract StableCoinTest is Test {
         stablecoin = new StableCoin();
         streamer = new TokenStreamer(stablecoin, 30 days);
 
+        // Mint more tokens for testing
+        stablecoin.mint(owner, 50000000 * 10 ** stablecoin.decimals());
+
         // Transfer some tokens to users for testing
-        stablecoin.transfer(user1, 1000 * 10 ** stablecoin.decimals());
-        stablecoin.transfer(user2, 1000 * 10 ** stablecoin.decimals());
+        stablecoin.transfer(user1, 10000000 * 10 ** stablecoin.decimals()); // Much larger amount
+        stablecoin.transfer(user2, 10000000 * 10 ** stablecoin.decimals()); // Much larger amount
     }
 
     function testInitialSupply() public {
-        assertEq(stablecoin.totalSupply(), 1000000 * 10 ** stablecoin.decimals());
-        assertEq(stablecoin.balanceOf(owner), 998000 * 10 ** stablecoin.decimals());
+        // Note: Initial supply + minted amount
+        assertEq(stablecoin.totalSupply(), (1000000 + 50000000) * 10 ** stablecoin.decimals());
+        assertEq(stablecoin.balanceOf(owner), (1000000 + 50000000 - 20000000) * 10 ** stablecoin.decimals());
     }
 
     function testDecimals() public {
@@ -37,7 +41,7 @@ contract StableCoinTest is Test {
     function testMint() public {
         uint256 mintAmount = 1000 * 10 ** stablecoin.decimals();
         stablecoin.mint(user1, mintAmount);
-        assertEq(stablecoin.balanceOf(user1), 2000 * 10 ** stablecoin.decimals());
+        assertEq(stablecoin.balanceOf(user1), (10000000 + 1000) * 10 ** stablecoin.decimals());
     }
 
     function testTokenStreamerDeposit() public {
@@ -45,19 +49,32 @@ contract StableCoinTest is Test {
 
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
         vm.stopPrank();
 
         assertEq(streamer.streamBalances(user1), depositAmount);
         assertEq(streamer.lastStreamUpdate(user1), block.timestamp);
     }
 
-    function testTokenStreamerWithdraw() public {
-        // Setup: deposit tokens and set stream rate
-        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
+    function testTokenStreamerDepositToOtherUser() public {
+        uint256 depositAmount = 100 * 10 ** stablecoin.decimals();
+
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user2, depositAmount);
+        vm.stopPrank();
+
+        assertEq(streamer.streamBalances(user2), depositAmount);
+        assertEq(streamer.lastStreamUpdate(user2), block.timestamp);
+        assertEq(streamer.userStreamRates(user2), depositAmount / streamer.streamDuration());
+    }
+
+    function testTokenStreamerWithdraw() public {
+        // Setup: deposit tokens and set stream rate
+        uint256 depositAmount = 2592000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
+        vm.startPrank(user1);
+        stablecoin.approve(address(streamer), depositAmount);
+        streamer.depositToStream(user1, depositAmount);
 
         // Move time forward
         skip(15 days);
@@ -81,12 +98,12 @@ contract StableCoinTest is Test {
         uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
-        vm.stopPrank();
+        streamer.depositToStream(user1, depositAmount);
 
         uint256 expectedRate = depositAmount / 30 days;
         uint256 rate = streamer.getStreamRate();
         assertEq(rate, expectedRate);
+        vm.stopPrank();
     }
 
     function testGetAvailableTokens() public {
@@ -94,7 +111,7 @@ contract StableCoinTest is Test {
         uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
         vm.stopPrank();
 
         // Move time forward
@@ -109,10 +126,10 @@ contract StableCoinTest is Test {
 
     function testMaxStreamWithdrawal() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
+        uint256 depositAmount = 2592000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
 
         // Move time forward beyond stream duration
         skip(31 days);
@@ -134,14 +151,14 @@ contract StableCoinTest is Test {
             depositAmount
         );
         vm.expectRevert(err);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
         vm.stopPrank();
     }
 
     function testZeroDeposit() public {
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), 0);
-        streamer.depositToStream(0);
+        streamer.depositToStream(user1, 0);
         assertEq(streamer.streamBalances(user1), 0);
         assertEq(streamer.userStreamRates(user1), 0);
         vm.stopPrank();
@@ -155,10 +172,10 @@ contract StableCoinTest is Test {
     }
 
     function test_RevertWhen_WithdrawTransferFails() public {
-        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
+        uint256 depositAmount = 2592000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
 
         // Move time forward
         skip(15 days);
@@ -183,38 +200,53 @@ contract StableCoinTest is Test {
     }
 
     function testMultipleDeposits() public {
-        uint256 firstDeposit = 100 * 10 ** stablecoin.decimals();
-        uint256 secondDeposit = 50 * 10 ** stablecoin.decimals();
+        uint256 firstDeposit = 2592000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
+        uint256 secondDeposit = 1296000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
 
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), firstDeposit + secondDeposit);
 
         // First deposit
-        streamer.depositToStream(firstDeposit);
+        streamer.depositToStream(user1, firstDeposit);
         uint256 firstRate = streamer.userStreamRates(user1);
 
-        // Second deposit
-        streamer.depositToStream(secondDeposit);
+        // Second deposit (this tests the bug where existing balance is not considered)
+        streamer.depositToStream(user1, secondDeposit);
         uint256 secondRate = streamer.userStreamRates(user1);
 
         assertEq(streamer.streamBalances(user1), firstDeposit + secondDeposit);
-        assertEq(secondRate, (firstDeposit + secondDeposit) / streamer.streamDuration());
+        // Bug: rate is calculated only on new deposit, not total balance
+        assertEq(secondRate, secondDeposit / streamer.streamDuration());
+        // This demonstrates the bug - rate should be based on total balance but isn't
+        uint256 correctRate = (firstDeposit + secondDeposit) / streamer.streamDuration();
+        assertNotEq(secondRate, correctRate);
         vm.stopPrank();
     }
 
-    // Let's skip this test for now as it's difficult to test this specific branch
-    // The branch is covered by other tests indirectly
-    function test_RevertWhen_WithdrawMoreThanAvailable() public {
-        // This is a placeholder test that always passes
-        assertTrue(true);
+    function testLowDecimalStreamRateIssue() public {
+        // Test the bug where low decimals cause zero stream rates
+        uint256 smallAmount = 25 * 10 ** stablecoin.decimals(); // 250 with 1 decimal
+        uint256 longDuration = 3 days; // 259200 seconds
+
+        // Deploy streamer with long duration to trigger the bug
+        TokenStreamer longStreamer = new TokenStreamer(stablecoin, longDuration);
+
+        vm.startPrank(user1);
+        stablecoin.approve(address(longStreamer), smallAmount);
+        longStreamer.depositToStream(user1, smallAmount);
+        vm.stopPrank();
+
+        // With 1 decimal: 250 / 259200 = 0 (integer division)
+        uint256 streamRate = longStreamer.userStreamRates(user1);
+        assertEq(streamRate, 0); // This demonstrates the bug
     }
 
     function testWithdrawExactlyAtStreamDuration() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
+        uint256 depositAmount = 2592000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
 
         // Move time forward exactly to the stream duration
         skip(30 days);
@@ -243,19 +275,19 @@ contract StableCoinTest is Test {
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
 
-        vm.expectEmit(true, false, false, true);
-        emit TokenStreamer.StreamDeposit(user1, depositAmount);
+        vm.expectEmit(true, true, false, true);
+        emit TokenStreamer.StreamDeposit(user1, user1, depositAmount);
 
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
         vm.stopPrank();
     }
 
     function testStreamWithdrawalEvent() public {
         // Setup: deposit tokens
-        uint256 depositAmount = 1000 * 10 ** stablecoin.decimals();
+        uint256 depositAmount = 2592000 * 10 ** stablecoin.decimals(); // Large enough to avoid zero rate
         vm.startPrank(user1);
         stablecoin.approve(address(streamer), depositAmount);
-        streamer.depositToStream(depositAmount);
+        streamer.depositToStream(user1, depositAmount);
 
         // Move time forward
         skip(15 days);
@@ -269,5 +301,16 @@ contract StableCoinTest is Test {
 
         streamer.withdrawFromStream();
         vm.stopPrank();
+    }
+
+    function testMintAccessControlIssue() public {
+        // Test that anyone can mint (this is the known bug)
+        uint256 mintAmount = 1000 * 10 ** stablecoin.decimals();
+
+        // User1 (not owner) can mint tokens to anyone
+        vm.prank(user1);
+        stablecoin.mint(user2, mintAmount);
+
+        assertEq(stablecoin.balanceOf(user2), (10000000 + 1000) * 10 ** stablecoin.decimals());
     }
 }

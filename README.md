@@ -3,74 +3,51 @@
 ## Purpose
 This repository contains a collection of intentionally vulnerable Solidity smart contracts designed for educational and testing purposes. It serves as a resource for developers, security researchers, and students to learn about common vulnerabilities in smart contracts and how to mitigate them.
 
-## Bug Categories and Locations
+## Current Architecture
 
-### 1. Denial of Service (DoS) Attacks
+The project consists of three main contracts:
+- **GovernanceToken.sol** - Contains both `GovernanceToken` and `GroupStaking` contracts
+- **LiquidityPool.sol** - Contains both `PoolShare` and `LiquidityPool` contracts
+- **StableCoin.sol** - Contains both `StableCoin` and `TokenStreamer` contracts
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-DOSA-1 | ✓ | LiquidityPool.sol | `claimReward` - Transfers fees to owner before user payment |
-| SOL-AM-DOSA-2 | ✓ | LendingMarket.sol | `liquidate` - No check if ETH transfer might fail |
-| SOL-AM-DOSA-3 | ✓ | GovernanceToken.sol | `withdrawFromGroup` - Blacklisted member blocks all distributions |
-| SOL-AM-DOSA-4 | ✓ | LiquidityPool.sol | `processWithdrawals` - Single failure blocks entire queue |
-| SOL-AM-DOSA-5 | ✓ | StableCoin.sol | `TokenStreamer` - Integer division with low decimals |
+## Detailed Bug Descriptions
 
-### 2. Reentrancy Attacks
+### Denial of Service (DoS) Attacks
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-ReentrancyAttack-1 | ✓ | LendingMarket.sol | `repay` - ETH transfer before state update |
-| SOL-AM-ReentrancyAttack-2 | ✓ | LiquidityPool.sol | `withdraw` - Token transfer before state update |
+**SOL-AM-DOSA-1**: In `LiquidityPool.claimReward()`, the function transfers fees to the owner before transferring rewards to the user. If the owner's transfer fails, the user cannot claim rewards.
 
-### 3. Front-running Attacks
+**SOL-AM-DOSA-3**: In `GroupStaking.withdrawFromGroup()`, if any member of a group is blacklisted, the entire group's funds become locked because the transfer to the blacklisted member will fail, preventing all withdrawals.
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-FrA-1 | ✓ | LiquidityPool.sol | `createMarket` - Manipulable market creation |
-| SOL-AM-FrA-2 | ✓ | LendingMarket.sol | `initializePosition` - Manipulable position initialization |
-| SOL-AM-FrA-3 | ✓ | LendingMarket.sol | `bidOnAuction` - Auction bid front-running |
-| SOL-AM-FrA-4 | ✓ | LiquidityPool.sol | `claimReward` - Reward claim front-running |
+**SOL-AM-DOSA-5**: In `TokenStreamer.depositToStream()`, integer division with low decimals (1 decimal place) can result in zero stream rates, preventing any token streaming.
 
-### 4. Replay Attacks
+### Access Control Issues
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-ReplayAttack-1 | ✓ | LiquidityPool.sol | `claimReward` - Nonce only incremented on success |
-| SOL-AM-ReplayAttack-2 | ✓ | LiquidityPool.sol | `claimReward` - No contract-specific data in signature |
+**Access Control Bug**: The `StableCoin.mint()` function has no access control, allowing anyone to mint unlimited tokens to any address.
 
-### 5. Griefing Attacks
+### Logic Errors
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-GA-1 | ✓ | LiquidityPool.sol | `depositFor` - Anyone can reset withdrawal timer |
-| SOL-AM-GA-2 | ✓ | GovernanceToken.sol | `withdrawFromGroup` - Blacklisted member blocks distributions |
+**Stream Rate Calculation**: In `TokenStreamer.depositToStream()`, the stream rate is calculated only based on the new deposit amount, not the total balance, leading to incorrect streaming rates for subsequent deposits.
 
-### 6. Price Manipulation Attacks
+## Testing
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-PMA-1 | ✓ | LendingMarket.sol | `borrow` - Relies on user-provided price |
-| SOL-AM-PMA-1_0 | ✓ | LendingMarket.sol | `getCurrentAuctionPrice` - Manipulable price calculation |
-| SOL-AM-PMA-2_1 | ✓ | LendingMarket.sol | `liquidate` - No oracle verification for liquidations |
+Run the test suite with:
+```bash
+forge test
+```
 
-### 7. Donation Attacks
+Individual contract tests:
+```bash
+forge test --match-contract GovernanceTokenTest
+forge test --match-contract LiquidityPoolTest
+forge test --match-contract StableCoinTest
+```
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-DA-1 | ✓ | LiquidityPool.sol | `deposit` - Share calculation vulnerable to donations |
+## Educational Use
 
-### 8. Timestamp Manipulation
+This repository is designed for:
+- Smart contract security training
+- Vulnerability research and detection tool testing
+- Educational workshops on blockchain security
+- Bug bounty preparation
 
-| Check Item | Bug Location | Contract | Function |
-|------------|--------------|----------|----------|
-| SOL-AM-MA-1 | ✓ | LendingMarket.sol | `bidOnAuction` - Relies on block.timestamp |
-| SOL-AM-MA-2 | ✓ | LiquidityPool.sol | `withdraw` - Withdrawal delay uses block.timestamp |
-| SOL-AM-MA-3 | ✓ | StableCoin.sol | `withdrawFromStream` - Streaming calculation uses block.timestamp |
-
-### 9. Additional Bugs
-
-| Bug Type | Bug Location | Contract | Function |
-|----------|--------------|----------|----------|
-| Access Control | ✓ | StableCoin.sol | `mint` - No access control |
-| Return Value | ✓ | LendingMarket.sol | `borrow` - Unchecked mint return value |
-| Input Validation | ✓ | LendingMarket.sol | `initializePosition` - No price validation |
+**⚠️ Warning**: These contracts contain intentional vulnerabilities and should never be deployed to mainnet or used with real funds.

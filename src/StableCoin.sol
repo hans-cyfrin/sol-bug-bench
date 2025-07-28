@@ -9,11 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  *
  * This stablecoin uses a simplified decimal structure (1 decimal place)
  * to optimize for gas efficiency and reduce computational complexity.
- * While this differs from the standard 18 decimals, it provides benefits
- * for specific use cases within the protocol.
+ * The design choice provides significant gas savings for frequent transactions
+ * within the DeFiHub ecosystem.
  */
 contract StableCoin is ERC20 {
-    // Events for better tracking
+    // Events for comprehensive transaction tracking
     event TokensMinted(address indexed to, uint256 amount);
 
     /**
@@ -35,7 +35,7 @@ contract StableCoin is ERC20 {
 
     /**
      * @dev Mints new tokens to the specified address
-     * In production, this would include access control mechanisms
+     * Allows flexible token supply management for protocol operations
      * @param to The address that will receive the minted tokens
      * @param amount The amount of tokens to mint
      */
@@ -49,22 +49,22 @@ contract StableCoin is ERC20 {
  * @title TokenStreamer
  * @dev Implements a token streaming mechanism for gradual token distribution
  *
- * This contract allows for continuous, time-based distribution of tokens,
- * which is useful for vesting, rewards, and other gradual release scenarios.
- * The streaming rate is determined by the total tokens and duration.
+ * This contract enables continuous, time-based distribution of tokens,
+ * which is essential for vesting schedules, reward programs, and other
+ * gradual release scenarios within the DeFiHub ecosystem.
  */
 contract TokenStreamer {
     // Core state variables
     StableCoin public immutable token;
     uint256 public streamDuration;
 
-    // User streaming data
+    // User streaming data for efficient tracking
     mapping(address => uint256) public streamBalances;
     mapping(address => uint256) public lastStreamUpdate;
     mapping(address => uint256) public userStreamRates;
 
     // Events for tracking stream activities
-    event StreamDeposit(address indexed user, uint256 amount);
+    event StreamDeposit(address indexed depositor, address indexed to, uint256 amount);
     event StreamWithdrawal(address indexed user, uint256 amount);
 
     /**
@@ -79,19 +79,20 @@ contract TokenStreamer {
 
     /**
      * @dev Deposits tokens into the user's streaming balance
-     * @param amount The amount of tokens to deposit
+     * Sets up a linear release schedule over the configured duration
+     * @param to The address that will receive the streamed tokens
+     * @param amount The amount of tokens to deposit for streaming
      */
-    function depositToStream(uint256 amount) external {
+    function depositToStream(address to, uint256 amount) external {
         require(
             token.transferFrom(msg.sender, address(this), amount), "Transfer failed"
         );
-        streamBalances[msg.sender] += amount;
-        lastStreamUpdate[msg.sender] = block.timestamp;
+        streamBalances[to] += amount;
+        lastStreamUpdate[to] = block.timestamp;
 
         // Calculate stream rate based on deposit amount (per second)
-        userStreamRates[msg.sender] = amount / streamDuration;
-
-        emit StreamDeposit(msg.sender, amount);
+        userStreamRates[to] = amount / streamDuration;
+        emit StreamDeposit(msg.sender, to, amount);
     }
 
     /**
@@ -99,26 +100,10 @@ contract TokenStreamer {
      * The amount withdrawn is calculated based on the streaming rate and time passed
      */
     function withdrawFromStream() external {
-        require(streamBalances[msg.sender] > 0, "No tokens to withdraw");
-        uint256 secondsElapsed = block.timestamp - lastStreamUpdate[msg.sender];
-        uint256 streamRate = userStreamRates[msg.sender];
+        uint256 amount = getAvailableTokens(msg.sender);
+        require(amount > 0, "No tokens to withdraw");
 
-        // If beyond stream duration, withdraw all remaining tokens
-        if (secondsElapsed >= streamDuration) {
-            uint256 amount = streamBalances[msg.sender];
-            streamBalances[msg.sender] = 0;
-            lastStreamUpdate[msg.sender] = block.timestamp;
-
-            require(token.transfer(msg.sender, amount), "Transfer failed");
-            emit StreamWithdrawal(msg.sender, amount);
-            return;
-        }
-
-        // Calculate amount based on stream rate and elapsed time
-        uint256 amount = streamRate * secondsElapsed;
-        require(amount <= streamBalances[msg.sender], "Insufficient balance");
-
-        // Update state
+        // Update state to reflect withdrawal
         streamBalances[msg.sender] -= amount;
         lastStreamUpdate[msg.sender] = block.timestamp;
 
@@ -128,7 +113,7 @@ contract TokenStreamer {
 
     /**
      * @dev Returns the current streaming rate in tokens per second
-     * @return The number of tokens released per second
+     * @return The number of tokens released per second for the caller
      */
     function getStreamRate() external view returns (uint256) {
         return userStreamRates[msg.sender];
@@ -137,21 +122,17 @@ contract TokenStreamer {
     /**
      * @dev Calculates the amount of tokens available for withdrawal
      * @param user The address to check available tokens for
-     * @return The amount of tokens available for withdrawal
+     * @return amount The amount of tokens available for withdrawal
      */
-    function getAvailableTokens(address user) external view returns (uint256) {
-        if (streamBalances[user] == 0) return 0;
-
+    function getAvailableTokens(address user) public view returns (uint256 amount) {
         uint256 secondsElapsed = block.timestamp - lastStreamUpdate[user];
         uint256 streamRate = userStreamRates[user];
 
-        // If beyond stream duration, return all remaining tokens
-        if (secondsElapsed >= streamDuration) {
-            return streamBalances[user];
-        }
-
         // Calculate amount based on stream rate and elapsed time
-        uint256 amount = streamRate * secondsElapsed;
-        return amount <= streamBalances[user] ? amount : streamBalances[user];
+        amount = streamRate * secondsElapsed;
+        if (amount > streamBalances[user]) {
+            amount = streamBalances[user];
+        }
+        return amount;
     }
 }
