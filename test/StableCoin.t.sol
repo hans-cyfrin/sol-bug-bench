@@ -30,8 +30,13 @@ contract StableCoinTest is Test {
 
     function testInitialSupply() public {
         // Note: Initial supply + minted amount
-        assertEq(stablecoin.totalSupply(), (1000000 + 50000000) * 10 ** stablecoin.decimals());
-        assertEq(stablecoin.balanceOf(owner), (1000000 + 50000000 - 20000000) * 10 ** stablecoin.decimals());
+        assertEq(
+            stablecoin.totalSupply(), (1000000 + 50000000) * 10 ** stablecoin.decimals()
+        );
+        assertEq(
+            stablecoin.balanceOf(owner),
+            (1000000 + 50000000 - 20000000) * 10 ** stablecoin.decimals()
+        );
     }
 
     function testDecimals() public {
@@ -41,7 +46,9 @@ contract StableCoinTest is Test {
     function testMint() public {
         uint256 mintAmount = 1000 * 10 ** stablecoin.decimals();
         stablecoin.mint(user1, mintAmount);
-        assertEq(stablecoin.balanceOf(user1), (10000000 + 1000) * 10 ** stablecoin.decimals());
+        assertEq(
+            stablecoin.balanceOf(user1), (10000000 + 1000) * 10 ** stablecoin.decimals()
+        );
     }
 
     function testTokenStreamerDeposit() public {
@@ -66,7 +73,9 @@ contract StableCoinTest is Test {
 
         assertEq(streamer.streamBalances(user2), depositAmount);
         assertEq(streamer.lastStreamUpdate(user2), block.timestamp);
-        assertEq(streamer.userStreamRates(user2), depositAmount / streamer.streamDuration());
+        assertEq(
+            streamer.userStreamRates(user2), depositAmount / streamer.streamDuration()
+        );
     }
 
     function testTokenStreamerWithdraw() public {
@@ -311,6 +320,8 @@ contract StableCoinTest is Test {
         vm.prank(user1);
         stablecoin.mint(user2, mintAmount);
 
-        assertEq(stablecoin.balanceOf(user2), (10000000 + 1000) * 10 ** stablecoin.decimals());
+        assertEq(
+            stablecoin.balanceOf(user2), (10000000 + 1000) * 10 ** stablecoin.decimals()
+        );
     }
 }

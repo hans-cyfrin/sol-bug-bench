@@ -116,7 +116,12 @@ contract LiquidityPool is Ownable {
      * @param nonce The current nonce for replay protection
      * @param signature Cryptographic signature proving authorization
      */
-    function claimReward(address user, uint256 amount, uint256 nonce, bytes memory signature) external {
+    function claimReward(
+        address user,
+        uint256 amount,
+        uint256 nonce,
+        bytes memory signature
+    ) external {
         require(rewards[user] >= amount, "Insufficient rewards");
         require(nonces[user] == nonce, "Invalid nonce");
 
