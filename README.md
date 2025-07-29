@@ -1,53 +1,77 @@
 # Solidity Bug Bench
 
 ## Purpose
-This repository contains a collection of intentionally vulnerable Solidity smart contracts designed for educational and testing purposes. It serves as a resource for developers, security researchers, and students to learn about common vulnerabilities in smart contracts and how to mitigate them.
+This repository contains a collection of intentionally vulnerable Solidity smart contracts designed for educational and testing purposes. It serves as a resource for developers, security researchers, and students to learn about common vulnerabilities in smart contracts and practice vulnerability detection and analysis.
 
-## Current Architecture
+The project is designed to be a growing collection of vulnerable contracts. We plan to continuously add more contracts with diverse vulnerability types in the future to create a comprehensive benchmark for smart contract security tools and training.
 
-The project consists of three main contracts:
-- **GovernanceToken.sol** - Contains both `GovernanceToken` and `GroupStaking` contracts
-- **LiquidityPool.sol** - Contains both `PoolShare` and `LiquidityPool` contracts
-- **StableCoin.sol** - Contains both `StableCoin` and `TokenStreamer` contracts
 
-## Detailed Bug Descriptions
+## Vulnerability Management
 
-### Denial of Service (DoS) Attacks
+### GitHub Issues as Vulnerability Documentation
+All vulnerabilities in this codebase are documented as GitHub issues in this repository. This approach provides:
+- Structured vulnerability reports with consistent formatting
+- Severity classification using GitHub labels
+- Community discussion and feedback capabilities
+- Version control for vulnerability discoveries and fixes
+- Easy integration with security tools and workflows
 
-**SOL-AM-DOSA-1**: In `LiquidityPool.claimReward()`, the function transfers fees to the owner before transferring rewards to the user. If the owner's transfer fails, the user cannot claim rewards.
+### Issues Folder
+The `/issues` folder contains tooling for managing vulnerability data:
 
-**SOL-AM-DOSA-3**: In `GroupStaking.withdrawFromGroup()`, if any member of a group is blacklisted, the entire group's funds become locked because the transfer to the blacklisted member will fail, preventing all withdrawals.
-
-**SOL-AM-DOSA-5**: In `TokenStreamer.depositToStream()`, integer division with low decimals (1 decimal place) can result in zero stream rates, preventing any token streaming.
-
-### Access Control Issues
-
-**Access Control Bug**: The `StableCoin.mint()` function has no access control, allowing anyone to mint unlimited tokens to any address.
-
-### Logic Errors
-
-**Stream Rate Calculation**: In `TokenStreamer.depositToStream()`, the stream rate is calculated only based on the new deposit amount, not the total balance, leading to incorrect streaming rates for subsequent deposits.
-
-## Testing
-
-Run the test suite with:
-```bash
-forge test
+#### Structure
+```
+issues/
+├── fetch_issues.py     # Python script to fetch vulnerabilities from GitHub API
+├── requirements.txt    # Python dependencies
+├── issues.json        # All GitHub issues data in JSON format
+└── findings.json      # Template for security findings
 ```
 
-Individual contract tests:
+#### Issue Fetching Script
+The `fetch_issues.py` script automatically pulls all open vulnerabilities from the GitHub repository:
+
 ```bash
-forge test --match-contract GovernanceTokenTest
-forge test --match-contract LiquidityPoolTest
-forge test --match-contract StableCoinTest
+cd issues
+python3 -m pip install -r requirements.txt
+python3 fetch_issues.py
 ```
+
+**Features:**
+- Fetches all open GitHub issues via API
+- Extracts severity levels from issue labels
+- Saves clean JSON data with only essential fields (id, title, body, severity)
+- Handles pagination for repositories with many issues
+- Filters out pull requests automatically
+
+**Output:** The script generates `issues.json` containing all vulnerability data in a simple array format, making it easy to integrate with security analysis tools or create custom reports.
+
 
 ## Educational Use
 
 This repository is designed for:
-- Smart contract security training
+- Smart contract security training and workshops
 - Vulnerability research and detection tool testing
-- Educational workshops on blockchain security
-- Bug bounty preparation
+- Security tool benchmarking and validation
+- Bug bounty preparation and practice
+- Academic research in blockchain security
+- Developing and testing automated vulnerability scanners
+
+## Future Expansion
+
+We plan to expand this benchmark with:
+- Additional contract types (DeFi protocols, NFTs, DAOs, etc.)
+- More diverse vulnerability categories
+- Contracts of varying complexity levels
+- Integration with popular testing frameworks
+- Automated vulnerability classification tools
+
+## Contributing
+
+When adding new vulnerabilities:
+1. Create a GitHub issue with detailed vulnerability description
+2. Use appropriate severity labels (Critical, High, Medium, Low)
+3. Include proof of concept and recommended mitigation
+4. Follow the established issue template format
 
 **⚠️ Warning**: These contracts contain intentional vulnerabilities and should never be deployed to mainnet or used with real funds.
