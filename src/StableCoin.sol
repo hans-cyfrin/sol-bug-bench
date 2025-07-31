@@ -58,6 +58,10 @@ contract TokenStreamer {
     StableCoin public immutable token;
     uint256 public streamDuration;
 
+    // Constants
+    uint256 public constant STREAM_MIN_DURATION = 3600; // 1 hour
+    uint256 public constant STREAM_MAX_DURATION = 3600 * 24 * 365; // 1 year
+
     // User streaming data for efficient tracking
     mapping(address => uint256) public streamBalances;
     mapping(address => uint256) public lastStreamUpdate;
@@ -67,12 +71,26 @@ contract TokenStreamer {
     event StreamDeposit(address indexed depositor, address indexed to, uint256 amount);
     event StreamWithdrawal(address indexed user, uint256 amount);
 
+    // Errors
+    error InvalidTokenAddress();
+    error InvalidStreamDuration();
+
     /**
      * @dev Initializes the token streamer with a stablecoin and duration
      * @param _token The stablecoin to be streamed
      * @param _streamDuration The duration over which tokens will be streamed
      */
     constructor(StableCoin _token, uint256 _streamDuration) {
+        if (address(_token) == address(0)) {
+            revert InvalidTokenAddress();
+        }
+        if (
+            _streamDuration < STREAM_MIN_DURATION
+                || _streamDuration > STREAM_MAX_DURATION
+        ) {
+            revert InvalidStreamDuration();
+        }
+
         token = _token;
         streamDuration = _streamDuration;
     }
@@ -84,6 +102,8 @@ contract TokenStreamer {
      * @param amount The amount of tokens to deposit for streaming
      */
     function depositToStream(address to, uint256 amount) external {
+        require(to != address(0), "Invalid address");
+        require(amount > 0, "Amount must be greater than 0");
         require(
             token.transferFrom(msg.sender, address(this), amount), "Transfer failed"
         );

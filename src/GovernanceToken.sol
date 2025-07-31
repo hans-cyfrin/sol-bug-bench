@@ -105,6 +105,7 @@ contract GroupStaking is Ownable {
         address[] members;
         uint256[] weights;
         bool exists;
+        address groupOwner;
     }
 
     // Mapping from group ID to group data
@@ -116,11 +117,21 @@ contract GroupStaking is Ownable {
     event StakeAdded(uint256 indexed groupId, address indexed staker, uint256 amount);
     event RewardsDistributed(uint256 indexed groupId, uint256 amount);
 
+    // Errors
+    error InvalidTokenAddress();
+    error InvalidWeight();
+    error InvalidMember();
+    error BlacklistedMember();
+    error DuplicateMember();
+
     /**
      * @dev Initializes the group staking contract with a governance token
      * @param _token The address of the governance token contract
      */
     constructor(address _token) Ownable(msg.sender) {
+        if (_token == address(0)) {
+            revert InvalidTokenAddress();
+        }
         token = GovernanceToken(_token);
     }
 
@@ -139,12 +150,31 @@ contract GroupStaking is Ownable {
             _members.length == _weights.length, "Members and weights length mismatch"
         );
 
-        // Validate that weights sum to 100%
+        // Validate weights
         uint256 totalWeight = 0;
         for (uint256 i = 0; i < _weights.length; i++) {
+            if (_weights[i] == 0) {
+                revert InvalidWeight();
+            }
             totalWeight += _weights[i];
         }
         require(totalWeight == 100, "Weights must sum to 100");
+
+        // Validate members
+        for (uint256 i = 0; i < _members.length; i++) {
+            if (_members[i] == address(0)) {
+                revert InvalidMember();
+            }
+            if (token.blacklisted(_members[i])) {
+                revert BlacklistedMember();
+            }
+            // Check if the member is duplicated
+            for (uint256 j = i + 1; j < _members.length; j++) {
+                if (_members[i] == _members[j]) {
+                    revert DuplicateMember();
+                }
+            }
+        }
 
         // Create the new group
         uint256 groupId = nextGroupId;
@@ -153,7 +183,8 @@ contract GroupStaking is Ownable {
             totalAmount: 0,
             members: _members,
             weights: _weights,
-            exists: true
+            exists: true,
+            groupOwner: msg.sender
         });
 
         nextGroupId++;
@@ -167,6 +198,8 @@ contract GroupStaking is Ownable {
      * @param _amount The amount of tokens to stake
      */
     function stakeToGroup(uint256 _groupId, uint256 _amount) external {
+        require(_amount > 0, "Amount must be greater than 0");
+        require(!token.blacklisted(msg.sender), "Sender is blacklisted");
         require(stakingGroups[_groupId].exists, "Group does not exist");
         require(
             token.transferFrom(msg.sender, address(this), _amount), "Transfer failed"
@@ -185,16 +218,7 @@ contract GroupStaking is Ownable {
         StakingGroup storage group = stakingGroups[_groupId];
         require(group.exists, "Group does not exist");
         require(group.totalAmount >= _amount, "Insufficient group balance");
-
-        // Verify the caller is a member of the group
-        bool isMember = false;
-        for (uint256 i = 0; i < group.members.length; i++) {
-            if (group.members[i] == msg.sender) {
-                isMember = true;
-                break;
-            }
-        }
-        require(isMember, "Not a group member");
+        require(group.groupOwner == msg.sender, "Not the group owner");
 
         // Update group balance
         group.totalAmount -= _amount;
