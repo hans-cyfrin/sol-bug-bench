@@ -47,112 +47,235 @@ contract StableCoin is ERC20 {
 
 /**
  * @title TokenStreamer
- * @dev Implements a token streaming mechanism for gradual token distribution
+ * @dev Implements a multi-stream token distribution mechanism for gradual token release
  *
- * This contract enables continuous, time-based distribution of tokens,
- * which is essential for vesting schedules, reward programs, and other
- * gradual release scenarios within the DeFiHub ecosystem.
+ * This contract enables continuous, time-based distribution of tokens with support
+ * for multiple streams per user, custom durations, and proper accounting for
+ * additional deposits to existing streams.
  */
 contract TokenStreamer {
     // Core state variables
     StableCoin public immutable token;
-    uint256 public streamDuration;
 
     // Constants
     uint256 public constant STREAM_MIN_DURATION = 3600; // 1 hour
     uint256 public constant STREAM_MAX_DURATION = 3600 * 24 * 365; // 1 year
 
-    // User streaming data for efficient tracking
-    mapping(address => uint256) public streamBalances;
-    mapping(address => uint256) public lastStreamUpdate;
-    mapping(address => uint256) public userStreamRates;
+    // Stream data structure
+    struct Stream {
+        address recipient;
+        uint256 totalDeposited;
+        uint256 totalWithdrawn;
+        uint256 startTime;
+        uint256 endTime;
+        uint256 lastUpdateTime;
+        bool exists;
+    }
+
+    // Storage mappings
+    mapping(uint256 => Stream) public streams;
+    mapping(address => uint256[]) public userStreams; // Track stream IDs per user
+    uint256 public nextStreamId = 1;
 
     // Events for tracking stream activities
-    event StreamDeposit(address indexed depositor, address indexed to, uint256 amount);
-    event StreamWithdrawal(address indexed user, uint256 amount);
+    event StreamCreated(
+        uint256 indexed streamId,
+        address indexed depositor,
+        address indexed recipient,
+        uint256 amount,
+        uint256 duration
+    );
+    event StreamDeposit(
+        uint256 indexed streamId, address indexed depositor, uint256 amount
+    );
+    event StreamWithdrawal(
+        uint256 indexed streamId, address indexed user, uint256 amount
+    );
 
     // Errors
     error InvalidTokenAddress();
     error InvalidStreamDuration();
+    error StreamNotFound();
+    error StreamEnded();
+    error NotStreamRecipient();
+    error InvalidRecipient();
+    error InvalidAmount();
 
     /**
-     * @dev Initializes the token streamer with a stablecoin and duration
+     * @dev Initializes the token streamer with a stablecoin
      * @param _token The stablecoin to be streamed
-     * @param _streamDuration The duration over which tokens will be streamed
      */
-    constructor(StableCoin _token, uint256 _streamDuration) {
+    constructor(StableCoin _token) {
         if (address(_token) == address(0)) {
             revert InvalidTokenAddress();
         }
-        if (
-            _streamDuration < STREAM_MIN_DURATION
-                || _streamDuration > STREAM_MAX_DURATION
-        ) {
+        token = _token;
+    }
+
+    /**
+     * @dev Creates a new token stream with specified duration
+     * @param to The address that will receive the streamed tokens
+     * @param amount The amount of tokens to deposit for streaming
+     * @param duration The duration over which tokens will be streamed
+     * @return streamId The ID of the newly created stream
+     */
+    function createStream(address to, uint256 amount, uint256 duration)
+        external
+        returns (uint256 streamId)
+    {
+        if (to == address(0)) revert InvalidRecipient();
+        if (amount == 0) revert InvalidAmount();
+        if (duration < STREAM_MIN_DURATION || duration > STREAM_MAX_DURATION) {
             revert InvalidStreamDuration();
         }
 
-        token = _token;
-        streamDuration = _streamDuration;
-    }
-
-    /**
-     * @dev Deposits tokens into the user's streaming balance
-     * Sets up a linear release schedule over the configured duration
-     * @param to The address that will receive the streamed tokens
-     * @param amount The amount of tokens to deposit for streaming
-     */
-    function depositToStream(address to, uint256 amount) external {
-        require(to != address(0), "Invalid address");
-        require(amount > 0, "Amount must be greater than 0");
         require(
             token.transferFrom(msg.sender, address(this), amount), "Transfer failed"
         );
-        streamBalances[to] += amount;
-        lastStreamUpdate[to] = block.timestamp;
 
-        // Calculate stream rate based on deposit amount (per second)
-        userStreamRates[to] = amount / streamDuration;
-        emit StreamDeposit(msg.sender, to, amount);
+        streamId = nextStreamId++;
+        streams[streamId] = Stream({
+            recipient: to,
+            totalDeposited: amount,
+            totalWithdrawn: 0,
+            startTime: block.timestamp,
+            endTime: block.timestamp + duration,
+            lastUpdateTime: block.timestamp,
+            exists: true
+        });
+
+        userStreams[to].push(streamId);
+        emit StreamCreated(streamId, msg.sender, to, amount, duration);
     }
 
     /**
-     * @dev Withdraws available tokens based on time elapsed since last update
-     * The amount withdrawn is calculated based on the streaming rate and time passed
+     * @dev Adds tokens to an existing stream, maintaining the original end time
+     * @param streamId The ID of the stream to add tokens to
+     * @param amount The amount of tokens to add
      */
-    function withdrawFromStream() external {
-        uint256 amount = getAvailableTokens(msg.sender);
-        require(amount > 0, "No tokens to withdraw");
+    function addToStream(uint256 streamId, uint256 amount) external {
+        Stream storage stream = streams[streamId];
+        if (!stream.exists) revert StreamNotFound();
+        if (amount == 0) revert InvalidAmount();
+        if (block.timestamp >= stream.endTime) revert StreamEnded();
 
-        // Update state to reflect withdrawal
-        streamBalances[msg.sender] -= amount;
-        lastStreamUpdate[msg.sender] = block.timestamp;
+        require(
+            token.transferFrom(msg.sender, address(this), amount), "Transfer failed"
+        );
 
-        require(token.transfer(msg.sender, amount), "Transfer failed");
-        emit StreamWithdrawal(msg.sender, amount);
+        stream.totalDeposited += amount;
+        stream.lastUpdateTime = block.timestamp;
+        // Note: endTime stays the same, maintaining original timeline
+
+        emit StreamDeposit(streamId, msg.sender, amount);
     }
 
     /**
-     * @dev Returns the current streaming rate in tokens per second
-     * @return The number of tokens released per second for the caller
+     * @dev Withdraws available tokens from a specific stream
+     * @param streamId The ID of the stream to withdraw from
      */
-    function getStreamRate() external view returns (uint256) {
-        return userStreamRates[msg.sender];
+    function withdrawFromStream(uint256 streamId) external {
+        Stream storage stream = streams[streamId];
+        if (!stream.exists) revert StreamNotFound();
+        if (msg.sender != stream.recipient) revert NotStreamRecipient();
+
+        uint256 available = getAvailableTokens(streamId);
+        if (available == 0) revert InvalidAmount();
+
+        stream.totalWithdrawn += available;
+        stream.lastUpdateTime = block.timestamp;
+
+        require(token.transfer(msg.sender, available), "Transfer failed");
+        emit StreamWithdrawal(streamId, msg.sender, available);
     }
 
     /**
-     * @dev Calculates the amount of tokens available for withdrawal
-     * @param user The address to check available tokens for
-     * @return amount The amount of tokens available for withdrawal
+     * @dev Calculates the amount of tokens available for withdrawal from a stream
+     * @param streamId The ID of the stream to check
+     * @return available The amount of tokens available for withdrawal
      */
-    function getAvailableTokens(address user) public view returns (uint256 amount) {
-        uint256 secondsElapsed = block.timestamp - lastStreamUpdate[user];
-        uint256 streamRate = userStreamRates[user];
+    function getAvailableTokens(uint256 streamId)
+        public
+        view
+        returns (uint256 available)
+    {
+        Stream memory stream = streams[streamId];
+        if (!stream.exists) return 0;
 
-        // Calculate amount based on stream rate and elapsed time
-        amount = streamRate * secondsElapsed;
-        if (amount > streamBalances[user]) {
-            amount = streamBalances[user];
+        uint256 elapsedTime = block.timestamp - stream.startTime;
+        uint256 totalDuration = stream.endTime - stream.startTime;
+
+        if (block.timestamp >= stream.endTime) {
+            // Stream completed, all deposited tokens available
+            return stream.totalDeposited - stream.totalWithdrawn;
         }
-        return amount;
+
+        // Calculate proportional amount based on time elapsed
+        uint256 totalAvailable = (stream.totalDeposited * elapsedTime) / totalDuration;
+
+        // Return amount not yet withdrawn
+        if (totalAvailable > stream.totalWithdrawn) {
+            return totalAvailable - stream.totalWithdrawn;
+        }
+        return 0;
+    }
+
+    /**
+     * @dev Returns information about a specific stream
+     * @param streamId The ID of the stream to query
+     * @return recipient The address that receives tokens from this stream
+     * @return totalDeposited Total amount of tokens deposited to this stream
+     * @return totalWithdrawn Total amount of tokens withdrawn from this stream
+     * @return startTime When the stream started
+     * @return endTime When the stream will end
+     * @return exists Whether the stream exists
+     */
+    function getStreamInfo(uint256 streamId)
+        external
+        view
+        returns (
+            address recipient,
+            uint256 totalDeposited,
+            uint256 totalWithdrawn,
+            uint256 startTime,
+            uint256 endTime,
+            bool exists
+        )
+    {
+        Stream memory stream = streams[streamId];
+        return (
+            stream.recipient,
+            stream.totalDeposited,
+            stream.totalWithdrawn,
+            stream.startTime,
+            stream.endTime,
+            stream.exists
+        );
+    }
+
+    /**
+     * @dev Returns all stream IDs for a specific user
+     * @param user The address to query streams for
+     * @return streamIds Array of stream IDs belonging to the user
+     */
+    function getUserStreams(address user)
+        external
+        view
+        returns (uint256[] memory streamIds)
+    {
+        return userStreams[user];
+    }
+
+    /**
+     * @dev Returns the current streaming rate for a specific stream in tokens per second
+     * @param streamId The ID of the stream to query
+     * @return rate The number of tokens released per second
+     */
+    function getStreamRate(uint256 streamId) external view returns (uint256 rate) {
+        Stream memory stream = streams[streamId];
+        if (!stream.exists || block.timestamp >= stream.endTime) return 0;
+
+        uint256 totalDuration = stream.endTime - stream.startTime;
+        return stream.totalDeposited / totalDuration;
     }
 }

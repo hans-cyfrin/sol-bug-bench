@@ -65,22 +65,28 @@ Our native stablecoin provides price stability and serves as the backbone for th
 
 **StableCoin Features:**
 - ERC20-compliant stablecoin with optimized decimal structure
-- Efficient minting system for protocol operations
+- Unrestricted minting system allowing flexible token supply management
 - Gas-optimized design with 1 decimal place for reduced transaction costs
 - Seamless integration with all protocol components
+- **Security Note**: Minting function is public and unrestricted - suitable for testing environments
 
 **TokenStreamer Features:**
 - Continuous time-based token distribution for vesting and rewards
-- Fully configurable streaming durations for flexible use cases
+- Flexible streaming durations (1 hour to 1 year) customizable per stream
 - Linear release mechanism ensuring predictable token flow
-- Multi-user support enabling complex distribution schemes
+- Multi-stream support per user enabling complex distribution schemes
+- Additional deposit capability via `addToStream()` to extend existing streams
+- Comprehensive stream querying and monitoring functions
+- **Design Choice**: Stream end times remain fixed; additional deposits increase token amounts without extending duration
+- **Design Choice**: Streams cannot be canceled once initiated - tokens must be withdrawn as they become available
 
 **Technical Specifications:**
 - Token Name: "USD Stable" (USDS)
 - Decimal Places: 1 (gas-optimized for frequent transactions)
 - Initial Supply: 1,000,000 tokens
-- Stream Duration: Configurable (default 30 days)
+- Stream Duration: Flexible (minimum 1 hour, maximum 1 year)
 - Distribution Model: Linear time-based release with precise calculations
+- Stream Management: Multiple concurrent streams per user supported
 
 ## User Flows
 
@@ -103,10 +109,12 @@ Our native stablecoin provides price stability and serves as the backbone for th
 ### Token Streaming Flow
 
 1. **Stream Setup**: Approve USDS spending allowance for the TokenStreamer contract
-2. **Stream Initialization**: Deposit tokens using `depositToStream(recipient, amount)` for gradual distribution
-3. **Continuous Release**: Tokens automatically become available over the configured streaming period
-4. **Recipient Withdrawal**: Recipients withdraw available tokens using `withdrawFromStream()` as they vest
-5. **Stream Management**: Monitor and manage multiple concurrent streams for complex distribution schemes
+2. **Stream Creation**: Create streams using `createStream(recipient, amount, duration)` with custom durations
+3. **Stream Enhancement**: Add additional tokens to existing streams using `addToStream(streamId, amount)`
+4. **Continuous Release**: Tokens automatically become available over the specified streaming period
+5. **Recipient Withdrawal**: Recipients withdraw available tokens using `withdrawFromStream(streamId)` as they vest
+6. **Stream Monitoring**: Query stream information using `getStreamInfo()`, `getUserStreams()`, and `getAvailableTokens()`
+7. **Stream Management**: Monitor and manage multiple concurrent streams for complex distribution schemes
 
 ## Smart Contract Architecture
 
@@ -144,19 +152,23 @@ DeFiHub Protocol
 DeFiHub implements multiple layers of security to protect user funds and maintain protocol integrity:
 
 ### Access Control
-- Multi-signature governance for critical protocol updates
-- Role-based permissions for administrative functions
-- User status management for enhanced security compliance
+- **Owner-based governance**: All contracts use OpenZeppelin's `Ownable` pattern where the admin/owner is a trusted entity with privileged access
+- **GovernanceToken owner** can mint new tokens and blacklist/whitelist user accounts to prevent malicious actors
+- **GroupStaking owner** can withdraw and distribute tokens from staking groups as the group owner
+- **LiquidityPool owner** receives protocol fees from reward claims and controls the PoolShare token minting
+- **User blacklisting**: The GovernanceToken contract allows the owner to blacklist addresses, preventing them from transferring tokens
 
 ### Economic Security
-- Time-locked withdrawals preventing flash loan exploitation
-- Proportional reward distribution ensuring fair value accrual
-- Fee mechanisms supporting long-term protocol sustainability
+- **Time-locked withdrawals**: 24-hour withdrawal delay in LiquidityPool preventing flash loan exploitation
+- **Proportional reward distribution**: GroupStaking distributes rewards according to predefined weights ensuring fair value accrual
+- **Protocol fees**: 10% fee mechanism on LiquidityPool reward claims supporting long-term protocol sustainability
 
 ### Technical Security
-- Signature-based authentication for sensitive operations
-- Overflow protection in all mathematical operations
-- Comprehensive event logging for transparency and monitoring
+- **Signature-based authentication**: ECDSA signature verification for LiquidityPool reward claims with nonce-based replay protection
+- **Overflow protection**: All mathematical operations use Solidity 0.8+ built-in overflow protection
+- **Comprehensive event logging**: All contracts emit detailed events for transparency and monitoring
+
+**Note**: The protocol relies on trusted administrators (contract owners) for critical operations. Users should verify the trustworthiness of these actors before participating.
 
 ## Integration Guide
 
@@ -174,8 +186,12 @@ function deposit() external payable;
 function claimReward(address user, uint256 amount, uint256 nonce, bytes memory signature) external;
 
 // Token streaming
-function depositToStream(address to, uint256 amount) external;
-function withdrawFromStream() external;
+function createStream(address to, uint256 amount, uint256 duration) external returns (uint256);
+function addToStream(uint256 streamId, uint256 amount) external;
+function withdrawFromStream(uint256 streamId) external;
+function getAvailableTokens(uint256 streamId) external view returns (uint256);
+function getStreamInfo(uint256 streamId) external view returns (address, uint256, uint256, uint256, uint256, bool);
+function getUserStreams(address user) external view returns (uint256[] memory);
 ```
 
 ### For Protocols
@@ -211,25 +227,6 @@ Our comprehensive test suite ensures protocol reliability:
 - Edge case testing for security validation
 - Integration testing for cross-contract interactions
 - Gas optimization validation for cost-effective operations
-
-## Roadmap
-
-### Phase 1: Core Protocol (Current)
-- ✅ Governance token and group staking implementation
-- ✅ Liquidity pool with reward mechanisms
-- ✅ Stablecoin and token streaming infrastructure
-
-### Phase 2: Enhanced Features
-- 🔄 Advanced governance voting mechanisms
-- 🔄 Multi-asset liquidity pool support
-- 🔄 Cross-chain bridge integration
-- 🔄 Yield optimization strategies
-
-### Phase 3: Ecosystem Expansion
-- 📋 Protocol-owned liquidity programs
-- 📋 Developer grants and ecosystem fund
-- 📋 Institutional partnership integrations
-- 📋 Layer 2 deployment and scaling
 
 ## Community
 
