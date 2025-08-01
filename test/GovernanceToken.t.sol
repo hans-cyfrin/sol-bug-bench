@@ -263,9 +263,8 @@ contract GovernanceTokenTest is Test {
         uint256 member1BalanceBefore = token.balanceOf(user1);
         uint256 member2BalanceBefore = token.balanceOf(user2);
 
-        // Withdraw half the staked amount
+        // Withdraw half the staked amount - must be done by group owner (this contract)
         uint256 withdrawAmount = 50 * 10 ** 18;
-        vm.prank(user1);
         staking.withdrawFromGroup(groupId, withdrawAmount);
 
         // Check balances after withdrawal
@@ -302,9 +301,8 @@ contract GovernanceTokenTest is Test {
         // Blacklist user2
         token.updateUserStatus(user2, true);
 
-        // Try to withdraw - should fail because user2 is blacklisted
+        // Try to withdraw as the group owner - should fail because user2 is blacklisted
         uint256 withdrawAmount = 50 * 10 ** 18;
-        vm.prank(user1);
         vm.expectRevert("Recipient is blacklisted");
         staking.withdrawFromGroup(groupId, withdrawAmount);
     }
@@ -418,9 +416,9 @@ contract GovernanceTokenTest is Test {
         staking.stakeToGroup(groupId, stakeAmount);
         vm.stopPrank();
 
-        // Try to withdraw as non-member
+        // Try to withdraw as non-member (user3 is not the group owner)
         vm.prank(user3);
-        vm.expectRevert("Not a group member");
+        vm.expectRevert("Not the group owner");
         staking.withdrawFromGroup(groupId, 50 * 10 ** 18);
     }
 }
