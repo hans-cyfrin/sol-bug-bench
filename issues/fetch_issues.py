@@ -108,7 +108,7 @@ def main():
         processed_issues = process_issues(issues)
 
         # Save to JSON file as simple array
-        output_file = "issues.json"
+        output_file = "./issues/issues.json"
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(processed_issues, f, indent=2, ensure_ascii=False)
 
