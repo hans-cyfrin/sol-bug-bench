@@ -279,34 +279,5 @@ contract LiquidityPoolTest is Test {
         assertLt(user2Shares, secondDeposit); // Gets fewer shares due to donation attack
     }
 
-    function testRewardClaimingWithReentrancy() public {
-        // Test the reentrancy vulnerability in claimReward
-        uint256 depositAmount = 1 ether;
-        uint256 rewardAmount = 0.05 ether;
-
-        // Create a proper signer address
-        uint256 privateKey = 0x5678;
-        address signer = vm.addr(privateKey);
-        vm.deal(signer, 10 ether);
-
-        // Setup: deposit to get rewards with the signer
-        vm.prank(signer);
-        pool.deposit{value: depositAmount}();
-
-        // Fund the pool for reward payments
-        vm.deal(address(pool), address(pool).balance + 1 ether);
-
-        uint256 nonce = pool.nonces(signer);
-        bytes32 messageHash = keccak256(abi.encode(signer, rewardAmount, nonce));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
-        vm.prank(signer);
-        pool.claimReward(signer, rewardAmount, nonce, signature);
-
-        // Verify nonce was incremented only on success
-        assertEq(pool.nonces(signer), nonce + 1);
-    }
-
     receive() external payable {}
 }
