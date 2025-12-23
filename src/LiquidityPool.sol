@@ -134,19 +134,20 @@ contract LiquidityPool is Ownable {
         uint256 fee = amount / 10; // 10% protocol fee
         uint256 userAmount = amount - fee;
 
+        // Update state before external calls (Checks-Effects-Interactions)
+        rewards[user] -= amount;
+        nonces[user]++;
+
         // Transfer protocol fee to treasury
         (bool feeSuccess,) = owner().call{value: fee}("");
         require(feeSuccess, "Fee transfer failed");
 
         // Transfer remaining amount to user
         (bool success,) = msg.sender.call{value: userAmount}("");
-        if (success) {
-            rewards[user] -= amount;
-            nonces[user]++;
+        require(success, "Transfer failed");
 
-            // Emit event for tracking reward claims
-            emit RewardClaimed(user, userAmount);
-        }
+        // Emit event for tracking reward claims
+        emit RewardClaimed(user, userAmount);
     }
 
     /**
